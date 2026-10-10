@@ -1,0 +1,4 @@
+# Adds only the glass-notepad row. It does not replace any shipped DSH component.
+- insert:
+    - id: glass-notepad
+      name: dsh-plugin-glass-notepad

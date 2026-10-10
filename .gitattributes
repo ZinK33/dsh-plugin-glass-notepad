@@ -1,0 +1,7 @@
+# keep line endings stable for every platform
+* text=auto eol=lf
+
+*.png binary
+*.jpg binary
+*.webp binary
+*.woff2 binary

@@ -1,0 +1,45 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      # the client half is a plain browser script
+      - name: Syntax check client half
+        run: node --check client.js
+
+      # the host half is an ES module
+      - name: Syntax check host half
+        run: node -e "import('./index.js').then(() => console.log('index.js ok'))"
+
+      - name: Validate manifests
+        run: |
+          node -e "
+            const fs = require('node:fs');
+            for (const file of ['package.json', 'locale/en.json', 'locale/zh.json', 'cordis.patch.yml']) {
+              if (file.endsWith('.json')) JSON.parse(fs.readFileSync(file, 'utf8'));
+              else if (!fs.readFileSync(file, 'utf8').includes('glass-notepad')) throw new Error(file + ' lost the plugin row');
+              console.log('ok', file);
+            }
+          "
+
+      - name: Check the bundle is self contained
+        run: |
+          node -e "
+            const fs = require('node:fs');
+            const src = fs.readFileSync('client.js', 'utf8');
+            const requires = [...src.matchAll(/require\(\s*['\"]([^'\"]+)['\"]\s*\)/g)].map((m) => m[1]);
+            const extra = requires.filter((name) => name !== 'react');
+            if (extra.length) throw new Error('unexpected module request(s): ' + extra.join(', '));
+            console.log('requires react only');
+          "

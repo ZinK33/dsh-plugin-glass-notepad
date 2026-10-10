@@ -1,0 +1,21 @@
+# macOS / Windows junk
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# editors
+.vscode/
+.idea/
+*.swp
+
+# logs & local state
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# packaging output
+artifacts/
+*.tgz
+
+# dependencies (this plugin has none, but keep installs out of the repo)
+node_modules/

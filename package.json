@@ -1,0 +1,53 @@
+{
+  "name": "dsh-plugin-glass-notepad",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "A floating black liquid-glass schedule with work/personal categories, collapsible sizing, and time-range annotations.",
+  "license": "MIT",
+  "author": "ZinK33",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ZinK33/dsh-plugin-glass-notepad.git"
+  },
+  "homepage": "https://github.com/ZinK33/dsh-plugin-glass-notepad",
+  "bugs": {
+    "url": "https://github.com/ZinK33/dsh-plugin-glass-notepad/issues"
+  },
+  "keywords": [
+    "dsh",
+    "dsh-plugin",
+    "schedule",
+    "calendar",
+    "liquid-glass"
+  ],
+  "icon": "./icon.svg",
+  "main": "index.js",
+  "exports": {
+    ".": "./index.js",
+    "./client": "./client.js",
+    "./package.json": "./package.json",
+    "./icon.svg": "./icon.svg",
+    "./locale/en.json": "./locale/en.json",
+    "./locale/zh.json": "./locale/zh.json"
+  },
+  "files": [
+    "index.js",
+    "client.js",
+    "cordis.patch.yml",
+    "icon.svg",
+    "README.md",
+    "LICENSE",
+    "locale/en.json",
+    "locale/zh.json"
+  ],
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "immediately": true
+    }
+  }
+}
