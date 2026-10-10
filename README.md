@@ -1,5 +1,7 @@
 # 液态黑色玻璃日程 · Liquid Black Glass Schedule
 
+[![ci](https://github.com/ZinK33/dsh-plugin-glass-notepad/actions/workflows/ci.yml/badge.svg)](https://github.com/ZinK33/dsh-plugin-glass-notepad/actions/workflows/ci.yml)
+
 一个悬浮在 DSH 窗口里的日程表插件：苹果「液态玻璃」（Liquid Glass）**黑色玻璃**质感，可以缩小成胶囊或小球，也可以拖拽缩放；每条日程分为**工作（紫色）**或**个人（蓝色）**，并能**标注时间范围**，时间轴按类型分两条泳道显示。
 
 A floating schedule plugin for DSH with an Apple Liquid Glass material in its black variant, three panel sizes, free resizing, work/personal categories, and per-entry time-range annotations.
