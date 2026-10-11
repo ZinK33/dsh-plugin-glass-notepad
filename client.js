@@ -52,7 +52,6 @@ window.__ModuleLoader__.load({
         resizeWidth: '左右拖动调整宽度',
         resizeHeight: '上下拖动调整高度',
         preset: '切换尺寸',
-        presetSmall: '小',
         presetMedium: '中',
         presetLarge: '大',
         timelineOn: '隐藏时间轴',
@@ -108,6 +107,8 @@ window.__ModuleLoader__.load({
         holidayFrom: '数据来源：国务院办公厅节假日通知（holiday-cn 汇总）',
         holidaySynced: '已从网络同步最新节假日数据',
         holidayBuiltin: '使用内置节假日数据（未联网同步）',
+        solarTerm: '节气',
+        nextTerm: '下个节气',
       },
       en: {
         title: 'Schedule',
@@ -124,7 +125,6 @@ window.__ModuleLoader__.load({
         resizeWidth: 'Drag sideways to change the width',
         resizeHeight: 'Drag up or down to change the height',
         preset: 'Cycle size',
-        presetSmall: 'S',
         presetMedium: 'M',
         presetLarge: 'L',
         timelineOn: 'Hide timeline',
@@ -174,12 +174,14 @@ window.__ModuleLoader__.load({
         dragHint: 'Drag to move · resize from the corner',
         noEnd: 'No end set',
         focus: 'Focus',
-        holidayOff: '休',
-        holidayWork: '班',
-        weekend: '周末',
-        holidayFrom: '数据来源：国务院办公厅节假日通知（holiday-cn 汇总）',
-        holidaySynced: '已从网络同步最新节假日数据',
-        holidayBuiltin: '使用内置节假日数据（未联网同步）',
+        holidayOff: 'off',
+        holidayWork: 'work',
+        weekend: 'Weekend',
+        holidayFrom: 'Source: State Council holiday notices (mirrored by holiday-cn)',
+        holidaySynced: 'Holiday data synced from the network',
+        holidayBuiltin: 'Using the built-in holiday table (no network sync)',
+        solarTerm: 'Solar term',
+        nextTerm: 'Next term',
       },
     };
 
@@ -324,6 +326,124 @@ window.__ModuleLoader__.load({
         saveHolidayCache();
       }
       return changed;
+    }
+
+    /* ------------------------------------------------- Chinese calendar data */
+
+    /* Bit-packed lunar table and the exact 24-solar-term table for 1900-2100.
+       Generated from the astronomical implementation in lunar-javascript (MIT)
+       and cross-checked against solarlunar (ISC) and the classic published
+       table; regenerate with the tooling described in the README. */
+    const LUNAR_INFO = [0x4bd8,0x4ae0,0xa570,0x54d5,0xd260,0xd950,0x16554,0x56a0,0x9ad0,0x55d2,0x4ae0,0xa5b6,0xa4d0,0xd250,0x1d255,0xb540,0xd6a0,0xada2,0x95b0,0x14977,0x4970,0xa4b0,0xb4b5,0x6a50,0x6d40,0x1ab54,0x2b60,0x9570,0x52f2,0x4970,0x6566,0xd4a0,0xea50,0x16a95,0x5ad0,0x2b60,0x186e3,0x92e0,0x1c8d7,0xc950,0xd4a0,0x1d8a6,0xb550,0x56a0,0x1a5b4,0x25d0,0x92d0,0xd2b2,0xa950,0xb557,0x6ca0,0xb550,0x15355,0x4da0,0xa5b0,0x14573,0x52b0,0xa9a8,0xe950,0x6aa0,0xaea6,0xab50,0x4b60,0xaae4,0xa570,0x5260,0xf263,0xd950,0x5b57,0x56a0,0x96d0,0x4dd5,0x4ad0,0xa4d0,0xd4d4,0xd250,0xd558,0xb540,0xb6a0,0x195a6,0x95b0,0x49b0,0xa974,0xa4b0,0xb27a,0x6a50,0x6d40,0xaf46,0xab60,0x9570,0x4af5,0x4970,0x64b0,0x74a3,0xea50,0x6b58,0x5ac0,0xab60,0x96d5,0x92e0,0xc960,0xd954,0xd4a0,0xda50,0x7552,0x56a0,0xabb7,0x25d0,0x92d0,0xcab5,0xa950,0xb4a0,0xbaa4,0xad50,0x55d9,0x4ba0,0xa5b0,0x15176,0x52b0,0xa930,0x7954,0x6aa0,0xad50,0x5b52,0x4b60,0xa6e6,0xa4e0,0xd260,0xea65,0xd530,0x5aa0,0x76a3,0x96d0,0x4afb,0x4ad0,0xa4d0,0x1d0b6,0xd250,0xd520,0xdd45,0xb5a0,0x56d0,0x55b2,0x49b0,0xa577,0xa4b0,0xaa50,0x1b255,0x6d20,0xada0,0x14b63,0x9370,0x49f8,0x4970,0x64b0,0x168a6,0xea50,0x6b20,0x1a6c4,0xaae0,0x92e0,0xd2e3,0xc960,0xd557,0xd4a0,0xda50,0x5d55,0x56a0,0xa6d0,0x55d4,0x52d0,0xa9b8,0xa950,0xb4a0,0xb6a6,0xad50,0x55a0,0xaba4,0xa5b0,0x52b0,0xb273,0x6930,0x7337,0x6aa0,0xad50,0x14b55,0x4b60,0xa570,0x54e4,0xd160,0xe968,0xd520,0xdaa0,0x16aa6,0x56d0,0x4ae0,0xa9d4,0xa2d0,0xd150,0xf252,0xd520]; // LUNAR_DATA
+    const TERM_TABLE = '6k4j6l5k6l6m7n8n8n9o8n7m6l4j6l5l6m6m8n8o8o9o8n8m6l5j6l6l6m7m8o8o8o9o8n8n6l5k7m6l7m7m8o9o9o9o8n8n7l5k6l5k6l6m7n8n8n9o8n7m6l4j6l5l6m6m8n8o8o9o8n8m6l5j6l6l6m6m8o8o8o9o8n8n6l5k7m6l7m7m8o9o9o9o8n8n7l5k6l5k6l6m7n8n8n9o8n7m6l4j6l5l6m6m8n8o8o9o8n8m6l5j6l6l6m6m8o8o8o9o8n8n6l5k7m6l7m7m8o9o9o9o8n8n7l5k6l5k6l6m7n8n8n9o8m7m6k4j6l5l6m6m8n8o8n9o8n8m6l4j6l5l6m6m8o8o8o9o8n8n6l5k6m6l6m7m8o8o9o9o8n8n6l5k6l5k6l6m7n8n8n8o8m7m6k4j6l5l6l6m8n8o8n9o8n8m6l4j6l5l6m6m8o8o8o9o8n8m6l5k6m6l6m7m8o8o9o9o8n8n6l5k6l5k6l6m7n8n8n8o8m7m6k4j6l5k6l6m8n8o8n9o8n7m6l4j6l5l6m6m8o8o8o9o8n8m6l5j6l6l6m7m8o8o9o9o8n8n6l5k6l5k6l6m7n8n8n8o8m7m6k4j6l5k6l6m8n8o8n9o8n7m6l4j6l5l6m6m8n8o8o9o8n8m6l5j6l6l6m7m8o8o9o9o8n8n6l5k6l5k6l6m7n8n8n8n7m7m6k4j6l5k6l6m7n8n8n9o8n7m6l4j6l5l6m6m8n8o8o9o8n8m6l5j6l6l6m7m8o8o8o9o8n8n6l5k6l5k6l6l7n8n8n8n7m7m6k4j6l5k6l6m7n8n8n9o8n7m6l4j6l5l6m6m8n8o8o9o8n8m6l5j6l6l6m6m8o8o8o9o8n8n6l5k6l5k6l6l7n8n8n8n7m7m6k4j6l5k6l6m7n8n8n9o8n7m6l4j6l5l6m6m8n8o8o9o8n8m6l5j6l6l6m6m8o8o8o9o8n8n6l5k6l5k6l6l7n8n8n8n7m7m6k4j6l5k6l6m7n8n8n9o8n7m6l4j6l5l6m6m8n8o8o9o8n8m6l5j6l6l6m6m8o8o8o9o8n8n6l5k6l5k5l6l7n8n8n8n7m7m6k4j6l5k6l6m7n8n8n8o8m7m6k4j6l5l6m6m8n8o8n9o8n8m6l4j6l5l6m6m8o8o8o9o8n8n6l5k5l5k5l6l7n7n8n8n7m7m5k4j6l5k6l6m7n8n8n8o8m7m6k4j6l5k6l6m8n8o8n9o8n8m6l4j6l5l6m6m8o8o8o9o8n8n6l5k5l5k5l6l7n7n8n8n7m7m5k4j6l5k6l6m7n8n8n8o8m7m6k4j6l5k6l6m8n8o8n9o8n7m6l4j6l5l6m6m8n8o8o9o8n8m6l5k5k5k5l6l7n7n8n8n7m7m5k4j6l5k6l6m7n8n8n8o8m7m6k4j6l5k6l6m7n8n8n9o8n7m6l4j6l5l6m6m8n8o8o9o8n8m6l5j5k5k5l6l7n7n7n8n7m7m5k4j6l5k6l6l7n8n8n8n7m7m6k4j6l5k6l6m7n8n8n9o8n7m6l4j6l5l6m6m8n8o8o9o8n8m6l5j5k5k5l6l7n7n7n8n7m7m5k4j6l5k6l6l7n8n8n8n7m7m6k4j6l5k6l6m7n8n8n9o8n7m6l4j6l5l6m6m8n8o8o9o8n8m6l5j5k5k5l5l7n7n7n8n7m7m5k4j6l5k6l6l7n8n8n8n7m7m6k4j6l5k6l6m7n8n8n9o8n7m6l4j6l5l6m6m8n8o8o9o8n8m6l5j5k5k5l5l7n7n7n8n7m7m5k4j6l5k5l6l7n8n8n8n7m7m6k4j6l5k6l6m7n8n8n9o8n7m6l4j6l5l6m6m8n8o8n9o8n8m6l5j5k4k5l5l7n7n7n8n7m7m5k4j6l5k5l6l7n7n8n8n7m7m6k4j6l5k6l6m7n8n8n8o8n7m6k4j6l5l6l6m8n8o8n9o8n8m6l5j5k4k5l5l7n7n7n8n7m7m5k4j6l5k5l6l7n7n8n8n7m7m6k4j6l5k6l6m7n8n8n8o8m7m6k4j6l5k6l6m8n8o8n9o8n8m6l4j5k4k5l5l7m7n7n8n7m7m5k4j5l5k5l6l7n7n8n8n7m7m5k4j6l5k6l6m7n8n8n8o8m7m6k4j6l5k6l6m7n8o8n9o8n7m6l4j5k4k5l5l7m7n7n8n7m7l5k4j5k5k5l6l7n7n7n8n7m7m5k4j6l5k6l6l7n8n8n8o8m7m6k4j6l5k6l6m7n8n8n9o8n7m6l4j5k4k5l5l7m7n7n8n7m7l5k4i5k5k5l6l7n7n7n8n7m7m5k4j6l5k6l6l7n8n8n8n7m7m6k4j6l5k6l6m7n8n8n9o8n7m6l4j5k4k5l5l7m7n7n8n7m7l5k4i5k5k5l5l7n7n7n8n7m7m5k4j6l5k6l6l7n8n8n8n7m7m6k4j6l5k6l6m7n8n8n9o8n7m6l4j5k4k5l5l7m7n7n8n7m7l5k4i5k5k5l5l7n7n7n8n7m7m5k4j6l5k6l6l7n8n8n8n7m7m6k4j6l5k6l6m7n8n8n9o8n7m6l4j5k4k5l5l7m7n7n8n7m7l5k4i5k5k5l5l7n7n7n8n7m7m5k4j6l5k5l6l7n7n8n8n7m7m6k4j6l5k6l6m7n8n8n9o8n7m6l4j5k4k5l5l7m7n7m8n7m7l5k4i5k4k5l5l7n7n7n8n7m7m5k4j6l5k5l6l7n7n8n8n7m7m6k4j6l5k6l6m7n8n8n8o8n7m6l4j5k4k5k5l7m7n7m8n7m7l5k4i5k4k5l5l7m7n7n8n7m7m5k4j6l5k5l6l7n7n8n8n7m7m6k4j6l5k6l6m7n8n8n8o8m7m6k4j5k4j5k5l7m7n7m8n7m7l5k3i5k4k5l5l7m7n7n8n7m7m5k4j5l5k5l6l7n7n8n8n7m7m5k4j6l5k6l6l7n8n8n8o8m7m6k4j5k4j5k5l6m7m7m8n7m7l5k3i5k4k5l5l7m7n7n8n7m7l5k4j5k5k5l6l7n7n7n8n7m7m5k4j6l5k6l6l7n8n8n8o8m7m6k4j5k4j5k5l6m7m7m8n7m6l5k3i5k4k5l5l7m7n7n8n7m7l5k4i5k5k5l5l7n7n7n8n7m7m5k4j6l5k6l6l7n8n8n8n7m7m6k4j5k4j5k5l6m7m7m8n7m6l5k3i5k4k5l5l7m7n7n8n7m7l5k4i5k5k5l5l7n7n7n8n7m7m5k4j6l5k6l6l7n8n8n8n7m7m6k4j5k4j5k5l6m7m7m8n7m6l5k3i5k4k5l5l7m7n7n8n7m7l5k4i5k5k5l5l7n7n7n8n7m7m5k4j6l5k5l6l7n7n8n8n7m7m6k4j5k4j5k5l6m7m7m8n7m6l5k3i5k4k5l5l7m7n7n8n7m7l5k4i5k5k5l5l7n7n7n8n7m7m5k4j6l5k5l6l7n7n8n8n7m7m6k4j5k4j5k5l6m7m7m8n7m6l5k3i5k4k5k5l7m7n7m8n7m7l5k4i5k4k5l5l7n7n7n8n7m7m5k4j6l5k5l6l7n7n8n8n7m7m6k4j5k4j5k5l6m7m7m7n7m6l5k3i5k4j5k5l7m7n7m8n7m7l5k4i5k4k5l5l7m7n7n8n7m7m5k4j6l5k5l6l7n7n8n8n7m7m6k4j5k4j5k5k6m7m7m7n7l6l5j3i5k4j5k5l6m7m7m8n7m7l5k3i5k4k5l5l7m7n7n8n7m7m5k4j5k5k5l6l7n7n7n8n7m7m5k4j5k4j5k5k6m7m7m7n7l6l5j3i5k4j5k5l6m7m7m8n7m7l5k3i5k4k5l5l7m7n7n8n7m7m5k4j5k5k5l5l7n7n7n8n7m7m5k4j5k4j5k5k6m7m7m7n7l6l5j3i5k4j5k5l6m7m7m8n7m6l5k3i5k4k5l5l7m7n7n8n7m7l5k4j5k5k5l5l7n7n7n8n7m7m5k4j5k4j5k5k6m7m7m7m6l6l5j3i5k4j5k5l6m7m7m8n7m6l5k3i5k4k5l5l7m7n7n8n7m7l5k4i5k5k5l5l7n7n7n8n7m7m5k4j5k4j5k5k6m7m7m7m6l6l5j3i5k4j5k5l6m7m7m8n7m6l5k3i5k4k5l5l7m7n7n8n7m7l5k4i5k5k5l5l7n7n7n8n7m7m5k4j5k4j4k5k6m6m7m7m6l6l5j3i5k4j5k5l6m7m7m8n7m6l5k3i5k4k5k5l7m7n7m8n7m7l5k4i5k5k5l5l7n7n7n8n7m7m5k4j5k4j4k5k6m6m7m7m6l6l5j3i5k4j5k5l6m7m7m7n7m6l5k3i5k4k5k5l7m7n7m8n7m7l5k4i5k4k5l5l7m7n7n8n7m7m5k4j5k4j4k5k6m6m7m7m6l6l5j3i5k4j5k5l6m7m7m7n7m6l5k3i5k4j5k5l6m7n7m8n7m7l5k4i5k4k5l5l7m7n7n8n7m7m5k4j5k4j4k5k6m6m7m7m6l6l5j3i5k4j5k5k6m7m7m7n7l6l5k3i5k4j5k5l6m7m7m8n7m7l5k3i5k4k5l5l7m7n7n8n7m7m5k4j4j4j4k5k6m6m6m7m6l6l4j3i5k4j5k5k6m7m7m7n7l6l5j3i5k4j5k5l6m7m7m8n7m7l5k3i5k4k5l5l7m7n7n8n7m7m5k4j4j4j4k4k6m6m6m7m6l6l4j3i5k4j5k5k6m7m7m7n7l6l5j3i5k4j5k5l6m7m7m8n7m6l5k3i5k4k5l5l7m7n7n8n7m7l5k4j4j4j4k4k6m6m6m7m6l6l4j3i5k4j5k5k6m7m7m7m6l6l5j3i5k4j5k5l6m7m7m8n7m6l5k3i5k4k5l5l7m7n7n8n7m7l5k4i4j4j4k4k6m6m6m7m6l6l4j3i5k4j5k5k6m6m7m7m6l6l5j3i5k4j5k5l6m7m7m8n7m6l5k3i5k4k5l5l7m7n7n8n7m7l5k4i5k5k5l5l7n7n7n8n7m7m'; // TERM_DATA
+    const CALENDAR_MIN_YEAR = 1900;
+    const CALENDAR_MAX_YEAR = 2100;
+    const TERM_NAMES = [
+      '小寒', '大寒', '立春', '雨水', '惊蛰', '春分', '清明', '谷雨',
+      '立夏', '小满', '芒种', '夏至', '小暑', '大暑', '立秋', '处暑',
+      '白露', '秋分', '寒露', '霜降', '立冬', '小雪', '大雪', '冬至',
+    ];
+    const LUNAR_MONTH_NAMES = ['正', '二', '三', '四', '五', '六', '七', '八', '九', '十', '冬', '腊'];
+    const LUNAR_DAY_NAMES = (() => {
+      const digits = ['一', '二', '三', '四', '五', '六', '七', '八', '九', '十'];
+      const names = [];
+      for (let day = 1; day <= 30; day += 1) {
+        if (day <= 10) names.push(`初${digits[day - 1]}`);
+        else if (day < 20) names.push(`十${digits[day - 11]}`);
+        else if (day === 20) names.push('二十');
+        else if (day < 30) names.push(`廿${digits[day - 21]}`);
+        else names.push('三十');
+      }
+      return names;
+    })();
+
+    const lunarValue = (year) => LUNAR_INFO[year - CALENDAR_MIN_YEAR];
+    const lunarLeapMonth = (value) => value & 0xf;
+    const lunarLeapDays = (value) => (value & 0xf ? ((value & 0x10000) ? 30 : 29) : 0);
+    const lunarMonthDays = (value, month) => ((value & (0x10000 >> month)) ? 30 : 29);
+    function lunarYearDays(value) {
+      let sum = 348;
+      for (let bit = 0x8000; bit > 0x8; bit >>= 1) sum += value & bit ? 1 : 0;
+      return sum + lunarLeapDays(value);
+    }
+
+    /* Gregorian date -> lunar date, or null outside 1900-2100. */
+    function solarToLunar(date) {
+      const year = date.getFullYear();
+      if (year < CALENDAR_MIN_YEAR || year > CALENDAR_MAX_YEAR) return null;
+      let offset = Math.floor((Date.UTC(year, date.getMonth(), date.getDate()) - Date.UTC(1900, 0, 31)) / 86400000);
+      if (offset < 0) return null;
+      let lunarYear = CALENDAR_MIN_YEAR;
+      let span = 0;
+      for (; lunarYear < CALENDAR_MAX_YEAR && offset > 0; lunarYear += 1) {
+        span = lunarYearDays(lunarValue(lunarYear));
+        offset -= span;
+      }
+      if (offset < 0) {
+        offset += span;
+        lunarYear -= 1;
+      }
+      const value = lunarValue(lunarYear);
+      const leap = lunarLeapMonth(value);
+      let isLeap = false;
+      let month = 1;
+      for (; month < 13 && offset > 0; month += 1) {
+        if (leap > 0 && month === leap + 1 && !isLeap) {
+          month -= 1;
+          isLeap = true;
+          span = lunarLeapDays(value);
+        } else {
+          span = lunarMonthDays(value, month);
+        }
+        if (isLeap && month === leap + 1) isLeap = false;
+        offset -= span;
+      }
+      if (offset === 0 && leap > 0 && month === leap + 1) {
+        if (isLeap) isLeap = false;
+        else {
+          isLeap = true;
+          month -= 1;
+        }
+      }
+      if (offset < 0) {
+        offset += span;
+        month -= 1;
+      }
+      return { year: lunarYear, month, day: offset + 1, isLeap };
+    }
+
+    function lunarText(lunar, lang) {
+      if (!lunar) return '';
+      if (lang === 'zh') {
+        const month = LUNAR_MONTH_NAMES[lunar.month - 1] || String(lunar.month);
+        return `${lunar.isLeap ? '闰' : ''}${month}月${LUNAR_DAY_NAMES[lunar.day - 1]}`;
+      }
+      return `Lunar ${lunar.isLeap ? 'leap ' : ''}${lunar.month}/${lunar.day}`;
+    }
+
+    /* Today's solar term, if this date is one of the 24. */
+    function solarTermOf(date) {
+      const year = date.getFullYear();
+      if (year < CALENDAR_MIN_YEAR || year > CALENDAR_MAX_YEAR) return null;
+      const base = (year - CALENDAR_MIN_YEAR) * 24;
+      const day = date.getDate();
+      const month = date.getMonth() + 1;
+      for (let index = (month - 1) * 2; index < month * 2; index += 1) {
+        const digit = TERM_TABLE[base + index];
+        if (digit && parseInt(digit, 36) === day) return { name: TERM_NAMES[index], index };
+      }
+      return null;
+    }
+
+    /* The next term after this date, for the tooltip. */
+    function nextSolarTerm(date) {
+      let cursor = startOfDay(date);
+      for (let step = 0; step < 32; step += 1) {
+        cursor = addDays(cursor, 1);
+        const term = solarTermOf(cursor);
+        if (term) return { name: term.name, date: cursor };
+      }
+      return null;
     }
 
     const WEEKDAYS = {
@@ -509,7 +629,6 @@ window.__ModuleLoader__.load({
 
     const DEFAULT_PANEL = { w: 340, h: 452, x: null, y: null };
     const PRESETS = [
-      { w: 290, h: 250 },
       { w: 340, h: 452 },
       { w: 470, h: 640 },
     ];
@@ -522,7 +641,7 @@ window.__ModuleLoader__.load({
         timeline: true,
         day: dayKey(new Date()),
         doneOrder: 'asc',
-        preset: 1,
+        preset: 0,
         corner: { h: 'right', v: 'bottom' },
         createdAt: new Date().toISOString(),
       };
@@ -568,7 +687,7 @@ window.__ModuleLoader__.load({
           timeline: parsed.timeline !== false,
           day: typeof parsed.day === 'string' ? parsed.day : base.day,
           doneOrder: parsed.doneOrder === 'desc' ? 'desc' : 'asc',
-          preset: Number.isInteger(parsed.preset) ? clamp(parsed.preset, 0, PRESETS.length - 1) : 1,
+          preset: Number.isInteger(parsed.preset) ? clamp(parsed.preset, 0, PRESETS.length - 1) : 0,
           corner: {
             h: parsed.corner && parsed.corner.h === 'left' ? 'left' : 'right',
             v: parsed.corner && parsed.corner.v === 'top' ? 'top' : 'bottom',
@@ -676,6 +795,8 @@ window.__ModuleLoader__.load({
 .agn-titles{display:flex;flex-direction:column;min-width:0;flex:1;gap:1px}
 .agn-title{font-size:13.5px;font-weight:600;letter-spacing:.01em;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .agn-sub{font-size:11px;line-height:1.3;color:var(--agn-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.agn-sub-alt{font-variant-numeric:tabular-nums}
+.agn-sub-alt[data-tip]{cursor:default}
 .agn-actions{display:flex;align-items:center;gap:4px;flex:none}
 .agn-btn{
   display:grid;place-items:center;width:28px;height:28px;border-radius:10px;color:var(--agn-muted);
@@ -1872,6 +1993,24 @@ window.__ModuleLoader__.load({
          already spelled out by the weekday text next to it. */
       const dayMark = dayBadge(parseDayKey(day), lang, t);
       const headerBadge = dayMark && dayMark.tone !== 'weekend' ? dayMark : null;
+      /* Lunar date and solar term for the day on show (lines under the title). */
+      const dayDate = parseDayKey(day);
+      const lunar = solarToLunar(dayDate);
+      const term = solarTermOf(dayDate);
+      const termNext = term ? null : nextSolarTerm(dayDate);
+      const lunarLine = lunar ? [lunarText(lunar, lang), term ? term.name : null].filter(Boolean).join(' · ') : '';
+      const lunarTip = lunar
+        ? [
+            lunarText(lunar, lang),
+            term
+              ? `${t('solarTerm')} ${term.name}`
+              : termNext
+                ? `${t('nextTerm')} ${termNext.name} ${fmtDate(termNext.date)}`
+                : '',
+          ]
+            .filter(Boolean)
+            .join(' · ')
+        : '';
       /* What the shrunk widget advertises: the nearest unfinished entry. */
       const pending = useMemo(() => nextPending(notes, now), [notes, now]);
       const pendingKind = pending ? normalizeKind(pending.kind) : null;
@@ -2026,6 +2165,7 @@ window.__ModuleLoader__.load({
               /* Date + weekday of the day being shown, right beside the size
                  control on the same header row. */
               h('span', { className: 'agn-sub' }, dayHeading(parseDayKey(day), today, lang, t)),
+              lunarLine ? h('span', { className: 'agn-sub agn-sub-alt', 'data-tip': lunarTip }, lunarLine) : null,
             ),
             h(
               'div',
@@ -2043,7 +2183,7 @@ window.__ModuleLoader__.load({
                 : null,
               h(
                 Tip,
-                { label: `${t('preset')} · ${[t('presetSmall'), t('presetMedium'), t('presetLarge')][preset]}` },
+                { label: `${t('preset')} · ${[t('presetMedium'), t('presetLarge')][preset]}` },
                 h(
                   'button',
                   {
