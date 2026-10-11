@@ -90,6 +90,7 @@ window.__ModuleLoader__.load({
         upcoming: '待开始',
         ended: '已结束',
         point: '时刻',
+        nextDayMark: '次日',
         count: '条',
         prevDay: '前一天',
         nextDay: '后一天',
@@ -163,6 +164,7 @@ window.__ModuleLoader__.load({
         upcoming: 'Upcoming',
         ended: 'Ended',
         point: 'Instant',
+        nextDayMark: 'next day',
         count: 'entries',
         prevDay: 'Previous day',
         nextDay: 'Next day',
@@ -608,14 +610,17 @@ window.__ModuleLoader__.load({
       return `${head}–${fmtClock(e)}`;
     }
 
+    /* The time badge and the timeline tooltip: every row and bar belongs to the
+       day on show, so the date is left out and only the clock is named. A range
+       that runs past midnight says so instead of naming dates. */
     function rangeText(note, t) {
       const s = rangeStart(note);
       if (!s) return t('untimed');
       const e = rangeEnd(note);
-      const head = `${fmtDate(s)} ${fmtClock(s)}`;
-      if (!e) return `${head} · ${t('point')}`;
+      if (!e) return `${fmtClock(s)} · ${t('point')}`;
       const span = e.getTime() - s.getTime();
-      return `${head} → ${fmtClock(e)} · ${durationText(Math.max(span, 60000), t)}`;
+      const tail = dayKey(e) === dayKey(s) ? fmtClock(e) : `${t('nextDayMark')} ${fmtClock(e)}`;
+      return `${fmtClock(s)} → ${tail} · ${durationText(Math.max(span, 60000), t)}`;
     }
 
     /* Every entry belongs to exactly one category; the category owns both the
