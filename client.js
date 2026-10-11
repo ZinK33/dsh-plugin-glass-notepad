@@ -29,7 +29,10 @@ window.__ModuleLoader__.load({
     const STORE_KEY = 'dsh-plugin-glass-notepad/state.v1';
     const MIN_W = 268;
     const MAX_W = 620;
-    const MIN_H = 220;
+    /* The header (title + date + lunar lines), the toolbar and the timeline are
+       fixed chrome of roughly 234px. The floor has to leave the scrolling list
+       some room, otherwise a short panel shows no entries at all. */
+    const MIN_H = 320;
     const MAX_H = 760;
     const EDGE = 8;
     const DAY_MS = 86400000;
@@ -541,6 +544,17 @@ window.__ModuleLoader__.load({
       return Number.isNaN(d.getTime()) ? null : d;
     }
 
+    /* A range is always ordered: an end that precedes its start (typed by hand
+       or left over in stored data) is swapped, so nothing can ever show a
+       negative duration or a bar that runs backwards. */
+    function orderRange(startAt, endAt) {
+      if (!startAt || !endAt) return { startAt, endAt };
+      const start = new Date(startAt).getTime();
+      const end = new Date(endAt).getTime();
+      if (Number.isNaN(start) || Number.isNaN(end) || end >= start) return { startAt, endAt };
+      return { startAt: endAt, endAt: startAt };
+    }
+
     function noteStatus(note, now) {
       const s = rangeStart(note);
       if (!s) return 'untimed';
@@ -651,12 +665,16 @@ window.__ModuleLoader__.load({
       if (!raw || typeof raw !== 'object') return null;
       const text = typeof raw.text === 'string' ? raw.text.slice(0, 20000) : '';
       const id = typeof raw.id === 'string' && raw.id ? raw.id : newId();
+      const range = orderRange(
+        typeof raw.startAt === 'string' ? raw.startAt : null,
+        typeof raw.endAt === 'string' ? raw.endAt : null,
+      );
       return {
         id,
         text,
         kind: normalizeKind(raw.kind),
-        startAt: typeof raw.startAt === 'string' ? raw.startAt : null,
-        endAt: typeof raw.endAt === 'string' ? raw.endAt : null,
+        startAt: range.startAt,
+        endAt: range.endAt,
         createdAt: typeof raw.createdAt === 'string' ? raw.createdAt : new Date().toISOString(),
         updatedAt: typeof raw.updatedAt === 'string' ? raw.updatedAt : new Date().toISOString(),
       };
@@ -1225,6 +1243,8 @@ window.__ModuleLoader__.load({
                     className: 'agn-input',
                     type: 'datetime-local',
                     value: toInput(note.startAt),
+                    /* the picker cannot offer an end before the start */
+                    max: toInput(note.endAt) || undefined,
                     onChange: (event) => {
                       const iso = fromInput(event.currentTarget.value);
                       /* an empty or half-typed value keeps the stored start; use 清除时间 to drop it */
@@ -1240,6 +1260,7 @@ window.__ModuleLoader__.load({
                     className: 'agn-input',
                     type: 'datetime-local',
                     value: toInput(note.endAt),
+                    min: toInput(note.startAt) || undefined,
                     onChange: (event) => onPatch({ endAt: fromInput(event.currentTarget.value) }),
                   }),
                 ),
@@ -1257,7 +1278,7 @@ window.__ModuleLoader__.load({
       );
     }
 
-    function Timeline({ notes, day, t, onPick, onDay }) {
+    function Timeline({ notes, day, t, onPick, onDay, strip }) {
       const today = startOfDay(new Date());
       const dayStart = startOfDay(day).getTime();
       const dayId = dayKey(day);
@@ -1342,27 +1363,31 @@ window.__ModuleLoader__.load({
             ),
           ),
         ),
-        h(
-          'div',
-          { className: 'agn-strip' },
-          [0, 3, 6, 9, 12, 15, 18, 21].map((hour) =>
-            h('span', { key: `g${hour}`, className: 'agn-grid', style: { left: `${(hour / 24) * 100}%` } }),
-          ),
-          h('span', { className: 'agn-lane-rule' }),
-          lanes.work,
-          lanes.personal,
-          [0, 6, 12, 18, 24].map((hour) =>
-            h(
-              'span',
-              { key: `l${hour}`, className: 'agn-grid-label', style: { left: `${(hour / 24) * 100}%` } },
-              `${pad2(hour === 24 ? 0 : hour)}`,
-            ),
-          ),
-          total ? null : h('span', { className: 'agn-tl-empty' }, t('timelineEmpty')),
-          isToday && nowLeft >= 0 && nowLeft <= 100
-            ? h('span', { className: 'agn-now', style: { left: `${nowLeft}%` } })
-            : null,
-        ),
+        /* the clock button hides the 24h strip only: the date navigation above
+           it must stay, otherwise the shown day could no longer be changed */
+        strip
+          ? h(
+              'div',
+              { className: 'agn-strip' },
+              [0, 3, 6, 9, 12, 15, 18, 21].map((hour) =>
+                h('span', { key: `g${hour}`, className: 'agn-grid', style: { left: `${(hour / 24) * 100}%` } }),
+              ),
+              h('span', { className: 'agn-lane-rule' }),
+              lanes.work,
+              lanes.personal,
+              [0, 6, 12, 18, 24].map((hour) =>
+                h(
+                  'span',
+                  { key: `l${hour}`, className: 'agn-grid-label', style: { left: `${(hour / 24) * 100}%` } },
+                  `${pad2(hour === 24 ? 0 : hour)}`,
+                ),
+              ),
+              total ? null : h('span', { className: 'agn-tl-empty' }, t('timelineEmpty')),
+              isToday && nowLeft >= 0 && nowLeft <= 100
+                ? h('span', { className: 'agn-now', style: { left: `${nowLeft}%` } })
+                : null,
+            )
+          : null,
       );
     }
 
@@ -1562,9 +1587,12 @@ window.__ModuleLoader__.load({
       const patchNote = useCallback((id, changes) => {
         setState((prev) => ({
           ...prev,
-          notes: prev.notes.map((note) =>
-            note.id === id ? { ...note, ...changes, updatedAt: new Date().toISOString() } : note,
-          ),
+          notes: prev.notes.map((note) => {
+            if (note.id !== id) return note;
+            const merged = { ...note, ...changes, updatedAt: new Date().toISOString() };
+            const range = orderRange(merged.startAt, merged.endAt);
+            return { ...merged, startAt: range.startAt, endAt: range.endAt };
+          }),
         }));
       }, []);
 
@@ -2274,15 +2302,14 @@ window.__ModuleLoader__.load({
                 ),
               ),
             ),
-            timeline
-              ? h(Timeline, {
-                  notes,
-                  day: parseDayKey(day),
-                  t,
-                  onPick: focusNote,
-                  onDay: (next) => patch({ day: dayKey(next) }),
-                })
-              : null,
+            h(Timeline, {
+              notes,
+              day: parseDayKey(day),
+              t,
+              strip: timeline,
+              onPick: focusNote,
+              onDay: (next) => patch({ day: dayKey(next) }),
+            }),
           ),
           h(
             'div',
